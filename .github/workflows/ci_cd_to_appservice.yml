@@ -1,0 +1,45 @@
+name: CI/CD to Azure App Service
+
+env:
+  AZURE_CONTAINER_REGISTRY: tananushkapetstorecr.azurecr.io
+  AZURE_CONTAINER_REGISTRY_USERNAME: tananushkapetstorecr
+  SERVICE_NAME: petstoreorderservice
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Checking the file system listing for ${{ env.SERVICE_NAME }}
+      run: |
+        ls -al
+    - name: Update the version.json
+      run: echo -n -e "{\"version\":\"${{ github.sha }}\",\"date\":\"$(date '+%m-%d-%Y %H:%M:%S')\"}" > src/main/resources/version.json
+    - run: cat src/main/resources/version.json
+    - uses: actions/setup-java@v3
+      name: Building ${{ env.SERVICE_NAME }} with Java 17
+      with:
+        java-version: '17'
+        distribution: 'adopt'
+    - name: Run Maven build
+      run: mvn --batch-mode --update-snapshots verify
+    - name: Upload Maven build artifact
+      uses: actions/upload-artifact@v1
+      with:
+        name: artifact
+        path: target/${{ env.SERVICE_NAME }}-0.0.1-SNAPSHOT.jar
+    - uses: azure/docker-login@v1
+      name: Build Docker image
+      with:
+        login-server: ${{ env.AZURE_CONTAINER_REGISTRY }}
+        username: ${{ env.AZURE_CONTAINER_REGISTRY_USERNAME }}
+        password: ${{ secrets.PETSTORECRSECRET }}
+    - name: Push Docker image to Azure Container Registry
+      run: |
+        docker build . -t ${{env.AZURE_CONTAINER_REGISTRY}}/${{ env.SERVICE_NAME }}:latest -t ${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+        docker push ${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.SERVICE_NAME }}:${{ github.sha }}
+        docker push ${{ env.AZURE_CONTAINER_REGISTRY }}/${{ env.SERVICE_NAME }}:latest      
