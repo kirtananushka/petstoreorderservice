@@ -62,7 +62,7 @@ public class StoreApiCache {
 	@Cacheable("orders")
 	public List<Product> getProducts() {
 		log.info(String.format(
-				"PetStoreOrderService retrieving products from %spetstoreproductservice/v2/product/findByStatus?status=available",
+				"PetStoreOrderService retrieving products from %s/petstoreproductservice/v2/product/findByStatus?status=available",
 				this.petStoreProductServiceURL));
 		List<Product> products = null;
 		ResponseEntity<String> response = null;
@@ -75,7 +75,7 @@ public class StoreApiCache {
 			HttpEntity<String> entity = new HttpEntity<String>("parameters", headers);
 			restTemplate.setRequestFactory(new CustomHttpComponentsClientHttpRequestFactory());
 			response = restTemplate
-					.exchange(String.format("%spetstoreproductservice/v2/product/findByStatus?status=available",
+					.exchange(String.format("%s/petstoreproductservice/v2/product/findByStatus?status=available",
 							this.petStoreProductServiceURL), HttpMethod.GET, entity, String.class);
 		} catch (Exception e) {
 			log.error(String.format(
