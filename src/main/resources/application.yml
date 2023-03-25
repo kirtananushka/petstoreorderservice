@@ -8,8 +8,12 @@ server:
 
 petstore:
   service:
+    app:
+      url: ${PETSTOREAPP_URL:http://localhost:8080}
     product:
       url: ${PETSTOREPRODUCTSERVICE_URL:http://localhost:8082}
+    orderreservationfn:
+      url: ${ORDERRESERVATIONFN_URL:http://localhost:8071/api/OrderItemsReserver}
 
 spring:
   application:

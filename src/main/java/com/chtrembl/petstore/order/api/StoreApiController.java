@@ -3,8 +3,16 @@ package com.chtrembl.petstore.order.api;
 import com.chtrembl.petstore.order.model.ContainerEnvironment;
 import com.chtrembl.petstore.order.model.Order;
 import com.chtrembl.petstore.order.model.Product;
+import com.chtrembl.petstore.order.service.OrderReservationService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.annotations.ApiParam;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.List;
+import java.util.Map;
+import javax.validation.Valid;
+import javax.validation.constraints.Min;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -20,14 +28,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.context.request.NativeWebRequest;
 
-import javax.validation.Valid;
-import javax.validation.constraints.Min;
-import java.io.IOException;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.List;
-import java.util.Map;
-
 @javax.annotation.Generated(value = "io.swagger.codegen.languages.SpringCodegen", date = "2021-12-21T10:17:19.885-05:00")
 
 @Controller
@@ -39,6 +39,8 @@ public class StoreApiController implements StoreApi {
 	private final ObjectMapper objectMapper;
 
 	private final NativeWebRequest request;
+
+	private final OrderReservationService orderReservationService;
 
 	@Autowired
 	@Qualifier(value = "cacheManager")
@@ -56,9 +58,13 @@ public class StoreApiController implements StoreApi {
 	}
 
 	@org.springframework.beans.factory.annotation.Autowired
-	public StoreApiController(ObjectMapper objectMapper, NativeWebRequest request) {
+	public StoreApiController(
+    ObjectMapper objectMapper,
+    NativeWebRequest request,
+    OrderReservationService orderReservationService) {
 		this.objectMapper = objectMapper;
 		this.request = request;
+		this.orderReservationService = orderReservationService;
 	}
 
 	// should really be in an interceptor
@@ -212,6 +218,8 @@ public class StoreApiController implements StoreApi {
 							orderId, e.getMessage()));
 				}
 			}
+
+			orderReservationService.reserveOrder(order);
 
 			try {
 				ApiUtil.setResponse(request, "application/json", new ObjectMapper().writeValueAsString(order));

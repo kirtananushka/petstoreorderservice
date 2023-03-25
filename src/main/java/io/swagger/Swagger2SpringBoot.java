@@ -1,6 +1,8 @@
 package io.swagger;
 
 import com.chtrembl.petstore.order.model.ContainerEnvironment;
+import com.chtrembl.petstore.order.service.OrderReservationService;
+import com.chtrembl.petstore.order.service.OrderReservationServiceImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
@@ -30,6 +32,11 @@ public class Swagger2SpringBoot implements CommandLineRunner {
 	@Bean
 	public ContainerEnvironment containerEnvvironment() {
 		return new ContainerEnvironment();
+	}
+
+	@Bean
+	public OrderReservationService orderReservationService() {
+		return new OrderReservationServiceImpl(containerEnvvironment());
 	}
 
 	@Override
