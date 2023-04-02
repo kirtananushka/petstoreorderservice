@@ -14,6 +14,14 @@ petstore:
       url: ${PETSTOREPRODUCTSERVICE_URL:http://localhost:8082}
     orderreservationfn:
       url: ${ORDERRESERVATIONFN_URL:http://localhost:8071/api/OrderItemsReserver}
+  cosmosdb:
+    database:
+      name: petstore-eastus-cosmosdb-db
+    container:
+      name: order
+    account:
+      host: ${COSMOSDB_ACCOUNT_HOST}
+      key: ${COSMOSDB_ACCOUNT_KEY}
 
 spring:
   application:

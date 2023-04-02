@@ -54,16 +54,19 @@ public class OrderReservationServiceImpl implements OrderReservationService {
     request.setSessionId(sessionId);
     request.setOrderJSON(orderJSON);
 
-    String result = this.orderReservationFnWebClient.post()
-      .uri("")
-      .contentType(MediaType.APPLICATION_JSON)
-      .header("Cache-Control", "no-cache")
-      .bodyValue(request)
-      .retrieve()
-      .bodyToMono(String.class)
-      .block();
-
-    logger.info("PetStoreOrderService: {}", result);
+    try {
+      this.orderReservationFnWebClient.post()
+        .uri("")
+        .contentType(MediaType.APPLICATION_JSON)
+        .header("Cache-Control", "no-cache")
+        .bodyValue(request)
+        .retrieve();
+//        .bodyToMono(String.class)
+//        .block()
+      logger.info("PetStoreOrderService: order={} reserved", request.getOrderJSON());
+    } catch (Exception e) {
+      logger.error("PetStoreOrderService: error while reserving order={}", request.getOrderJSON(), e);
+    }
   }
 
 

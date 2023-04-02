@@ -1,15 +1,23 @@
 package io.swagger;
 
+import com.azure.cosmos.ConsistencyLevel;
+import com.azure.cosmos.CosmosClient;
+import com.azure.cosmos.CosmosClientBuilder;
+import com.azure.cosmos.CosmosContainer;
+import com.azure.cosmos.CosmosDatabase;
+import com.azure.cosmos.models.CosmosContainerProperties;
+import com.azure.cosmos.models.CosmosContainerResponse;
+import com.azure.cosmos.models.CosmosDatabaseResponse;
 import com.chtrembl.petstore.order.model.ContainerEnvironment;
 import com.chtrembl.petstore.order.service.OrderReservationService;
 import com.chtrembl.petstore.order.service.OrderReservationServiceImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.ExitCodeGenerator;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
@@ -20,43 +28,76 @@ import springfox.documentation.swagger2.annotations.EnableSwagger2;
 @SpringBootApplication
 @EnableCaching
 @EnableSwagger2
-@ComponentScan(basePackages = { "io.swagger", "com.chtrembl.petstore.order.api", "io.swagger.configuration" })
+@ComponentScan(basePackages = {
+  "io.swagger",
+  "com.chtrembl.petstore.order.api",
+  "com.chtrembl.petstore.order.service",
+  "com.chtrembl.petstore.order.repository",
+  "io.swagger.configuration"
+})
 public class Swagger2SpringBoot implements CommandLineRunner {
-	static final Logger log = LoggerFactory.getLogger(Swagger2SpringBoot.class);
+  static final Logger log = LoggerFactory.getLogger(Swagger2SpringBoot.class);
 
-	@Bean
-	public RestTemplate restTemplate(RestTemplateBuilder builder) {
-		return builder.build();
-	}
+  @Bean
+  public RestTemplate restTemplate(RestTemplateBuilder builder) {
+    return builder.build();
+  }
 
-	@Bean
-	public ContainerEnvironment containerEnvvironment() {
-		return new ContainerEnvironment();
-	}
+  @Bean
+  public CosmosClient cosmosClient(
+    @Value("${petstore.cosmosdb.account.host}") String accountHost,
+    @Value("${petstore.cosmosdb.account.key}") String accountKey) {
+    return new CosmosClientBuilder()
+      .endpoint(accountHost)
+      .key(accountKey)
+      .consistencyLevel(ConsistencyLevel.EVENTUAL)
+      .buildClient();
+  }
 
-	@Bean
-	public OrderReservationService orderReservationService() {
-		return new OrderReservationServiceImpl(containerEnvvironment());
-	}
+  @Bean
+  public CosmosDatabase cosmosDatabase(
+    CosmosClient cosmosClient, @Value("${petstore.cosmosdb.database.name}") String databaseName) {
+    CosmosDatabaseResponse databaseResponse = cosmosClient.createDatabaseIfNotExists(databaseName);
+    return cosmosClient.getDatabase(databaseResponse.getProperties().getId());
+  }
 
-	@Override
-	public void run(String... arg0) throws Exception {
-		if (arg0.length > 0 && arg0[0].equals("exitcode")) {
-			throw new ExitException();
-		}
-	}
+  @Bean
+  public CosmosContainer cosmosContainer(
+    CosmosDatabase cosmosDatabase, @Value("${petstore.cosmosdb.container.name}") String containerName) {
+    CosmosContainerProperties containerProperties =
+      new CosmosContainerProperties(containerName, "/id");
+    CosmosContainerResponse containerResponse = cosmosDatabase.createContainerIfNotExists(containerProperties);
+    return cosmosDatabase.getContainer(containerResponse.getProperties().getId());
+  }
 
-	public static void main(String[] args) throws Exception {
-		new SpringApplication(Swagger2SpringBoot.class).run(args);
-	}
+  @Bean
+  public ContainerEnvironment containerEnvironment() {
+    return new ContainerEnvironment();
+  }
 
-	class ExitException extends RuntimeException implements ExitCodeGenerator {
-		private static final long serialVersionUID = 1L;
+  @Bean
+  public OrderReservationService orderReservationService(ContainerEnvironment containerEnvironment) {
+    return new OrderReservationServiceImpl(containerEnvironment);
+  }
 
-		@Override
-		public int getExitCode() {
-			return 10;
-		}
+  @Override
+  public void run(String... arg0) throws Exception {
+    if (arg0.length > 0 && arg0[0].equals("exitcode")) {
+      throw new ExitException();
+    }
+  }
 
-	}
+  public static void main(String[] args) throws Exception {
+    new SpringApplication(Swagger2SpringBoot.class).run(args);
+  }
+
+  class ExitException extends RuntimeException implements ExitCodeGenerator {
+    private static final long serialVersionUID = 1L;
+
+    @Override
+    public int getExitCode() {
+      return 10;
+    }
+
+  }
 }
