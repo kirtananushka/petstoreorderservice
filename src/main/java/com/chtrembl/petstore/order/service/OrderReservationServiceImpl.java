@@ -1,5 +1,6 @@
 package com.chtrembl.petstore.order.service;
 
+import com.chtrembl.petstore.order.client.OrderReservationServiceBusClient;
 import com.chtrembl.petstore.order.model.ContainerEnvironment;
 import com.chtrembl.petstore.order.model.Order;
 import com.chtrembl.petstore.order.model.OrderReservationRequest;
@@ -20,12 +21,15 @@ public class OrderReservationServiceImpl implements OrderReservationService {
   private static final Logger logger = LoggerFactory.getLogger(OrderReservationServiceImpl.class);
 
   private final ContainerEnvironment containerEnvironment;
+  private final OrderReservationServiceBusClient orderReservationServiceBusClient;
+  private WebClient appWebClient;
 
-  private WebClient appWebClient = null;
-  private WebClient orderReservationFnWebClient = null;
-
-  public OrderReservationServiceImpl(ContainerEnvironment containerEnvironment) {
+  public OrderReservationServiceImpl(
+    ContainerEnvironment containerEnvironment,
+    OrderReservationServiceBusClient orderReservationServiceBusClient
+  ) {
     this.containerEnvironment = containerEnvironment;
+    this.orderReservationServiceBusClient = orderReservationServiceBusClient;
   }
 
   @PostConstruct
@@ -33,14 +37,11 @@ public class OrderReservationServiceImpl implements OrderReservationService {
     this.appWebClient = WebClient.builder()
       .baseUrl(this.containerEnvironment.getPetStoreAppURL())
       .build();
-    this.orderReservationFnWebClient = WebClient.builder()
-      .baseUrl(this.containerEnvironment.getPetStoreOrderReservationFnURL())
-      .build();
   }
 
   @Override
   public void reserveOrder(Order order) {
-    String sessionId = retrieveSessionId().orElse(order.getId());
+    String sessionId = retrieveSessionId().filter(id-> !id.isBlank()).orElse(order.getId());
     String orderJSON = "";
     try {
       orderJSON = new ObjectMapper().setSerializationInclusion(Include.NON_NULL)
@@ -54,19 +55,8 @@ public class OrderReservationServiceImpl implements OrderReservationService {
     request.setSessionId(sessionId);
     request.setOrderJSON(orderJSON);
 
-    try {
-      this.orderReservationFnWebClient.post()
-        .uri("")
-        .contentType(MediaType.APPLICATION_JSON)
-        .header("Cache-Control", "no-cache")
-        .bodyValue(request)
-        .retrieve();
-//        .bodyToMono(String.class)
-//        .block()
-      logger.info("PetStoreOrderService: order={} reserved", request.getOrderJSON());
-    } catch (Exception e) {
-      logger.error("PetStoreOrderService: error while reserving order={}", request.getOrderJSON(), e);
-    }
+//    orderReservationWebClient.reserveOrder(request);
+    orderReservationServiceBusClient.reserveOrder(request);
   }
 
 

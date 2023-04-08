@@ -45,3 +45,6 @@ management:
 azure:
   application-insights:
     instrumentation-key: ${APPINSIGHTS_INSTRUMENTATIONKEY}
+  service-bus:
+    connection-string: ${SERVICE_BUS_CONNECTION_STRING}
+    queue-name: ${SERVICE_BUS_QUEUE_NAME}

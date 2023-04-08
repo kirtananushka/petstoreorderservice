@@ -8,6 +8,10 @@ import com.azure.cosmos.CosmosDatabase;
 import com.azure.cosmos.models.CosmosContainerProperties;
 import com.azure.cosmos.models.CosmosContainerResponse;
 import com.azure.cosmos.models.CosmosDatabaseResponse;
+import com.azure.messaging.servicebus.ServiceBusClientBuilder;
+import com.azure.messaging.servicebus.ServiceBusSenderClient;
+import com.chtrembl.petstore.order.client.OrderReservationServiceBusClient;
+import com.chtrembl.petstore.order.client.OrderReservationWebClient;
 import com.chtrembl.petstore.order.model.ContainerEnvironment;
 import com.chtrembl.petstore.order.service.OrderReservationService;
 import com.chtrembl.petstore.order.service.OrderReservationServiceImpl;
@@ -62,6 +66,18 @@ public class Swagger2SpringBoot implements CommandLineRunner {
   }
 
   @Bean
+  public ServiceBusSenderClient serviceBusSenderClient(
+    @Value("${azure.service-bus.connection-string}") String connectionString,
+    @Value("${azure.service-bus.queue-name}") String queueName
+  ) {
+    return new ServiceBusClientBuilder()
+      .connectionString(connectionString)
+      .sender()
+      .queueName(queueName)
+      .buildClient();
+  }
+
+  @Bean
   public CosmosContainer cosmosContainer(
     CosmosDatabase cosmosDatabase, @Value("${petstore.cosmosdb.container.name}") String containerName) {
     CosmosContainerProperties containerProperties =
@@ -76,8 +92,24 @@ public class Swagger2SpringBoot implements CommandLineRunner {
   }
 
   @Bean
-  public OrderReservationService orderReservationService(ContainerEnvironment containerEnvironment) {
-    return new OrderReservationServiceImpl(containerEnvironment);
+  public OrderReservationWebClient orderReservationWebClient(ContainerEnvironment containerEnvironment) {
+    return new OrderReservationWebClient(containerEnvironment);
+  }
+
+  @Bean
+  public OrderReservationServiceBusClient orderReservationServiceBusClient(
+    ServiceBusSenderClient serviceBusSenderClient) {
+    return new OrderReservationServiceBusClient(serviceBusSenderClient);
+  }
+
+  @Bean
+  public OrderReservationService orderReservationService(
+    ContainerEnvironment containerEnvironment,
+    OrderReservationServiceBusClient orderReservationServiceBusClient) {
+    return new OrderReservationServiceImpl(
+      containerEnvironment,
+      orderReservationServiceBusClient
+    );
   }
 
   @Override
